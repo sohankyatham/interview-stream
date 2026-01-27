@@ -1,3 +1,9 @@
+# InterviewStream v1
+AI Interviewer where users can:
+- Start a mock interview
+- Answer questions (text first, later video)
+- Eventually get feedback
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
