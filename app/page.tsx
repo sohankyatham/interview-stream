@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import InterviewCard from "@/components/InterviewCard";
+import AnswerSummary from "@/components/AnswerSummary";
 
 const questions = [
   "Tell me about a time you faced a challenge or conflict at work. How did you handle it?",
@@ -13,7 +14,7 @@ export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
-  const [finished, setFinished] = useState(false); // new
+  const [finished, setFinished] = useState(false);
 
   function nextQuestion(answer: string) {
     setAnswers((prev) => [...prev, answer]);
@@ -21,9 +22,15 @@ export default function Home() {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion((prev) => prev + 1);
     } else {
-      // last question completed
-      setFinished(true); // mark finished
+      setFinished(true);
     }
+  }
+
+  function restartInterview() {
+    setStarted(false);
+    setCurrentQuestion(0);
+    setAnswers([]);
+    setFinished(false);
   }
 
   return (
@@ -43,22 +50,11 @@ export default function Home() {
       )}
 
       {finished && (
-        <div className="mt-6 text-center">
-          <h2 className="text-2xl font-semibold mb-2">Interview Complete!</h2>
-          <p className="mb-4">Your answers have been saved.</p>
-          <button
-            onClick={() => {
-              // reset to start over if desired
-              setStarted(false);
-              setCurrentQuestion(0);
-              setAnswers([]);
-              setFinished(false);
-            }}
-            className="bg-blue-600 px-4 py-2 rounded-lg text-white"
-          >
-            Restart Interview
-          </button>
-        </div>
+        <AnswerSummary
+          questions={questions}
+          answers={answers}
+          onRestart={restartInterview}
+        />
       )}
     </main>
   );
