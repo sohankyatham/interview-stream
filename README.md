@@ -1,8 +1,32 @@
 # InterviewStream v1
+InterviewStream is a full-stack mock interview platform that evaluates behavioral interview responses using AI.
+
 AI Interviewer where users can:
 - Start a mock interview
 - Answer questions (text first, later video)
 - Get feedback and improve their interview skills
+
+## Features
+- Multi-step interview flow
+- Answer review & summary
+- AI evaluation using Gemini 2.5 Flash
+- Per-question scoring, strengths, and improvement feedback
+- Robust JSON handling and error recovery
+
+## Tech Stack
+- Frontend: Next.js (App Router), React, TypeScript, Tailwind CSS
+- Backend: Next.js API Routes
+- AI: Google Gemini 2.5 Flash
+
+## Why I Built This
+I wanted to understand how AI-driven interview platforms work end-to-end, including frontend UX, API design, prompt engineering, and handling unreliable LLM outputs.
+
+## What I Learned
+- Designing clean component boundaries
+- Enforcing structured AI outputs
+- Handling real-world LLM failure modes
+- Building production-style APIs in Next.js
+
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
