@@ -2,16 +2,10 @@
 
 import { useMemo, useState } from "react";
 
-type Evaluation = {
-  score: number;
+type AIResult = {
+  score: number; // 1-10
   strength: string;
   improvement: string;
-};
-
-type AIItem = {
-  question: string;
-  answer: string;
-  evaluation: Evaluation;
 };
 
 type AnswerSummaryProps = {
@@ -20,30 +14,22 @@ type AnswerSummaryProps = {
   onRestart: () => void;
 };
 
-function extractJson(text: string): string {
-  // Removes ```json ... ``` or ``` ... ```
-  return text
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "")
-    .trim();
-}
-
 export default function AnswerSummary({ questions, answers, onRestart }: AnswerSummaryProps) {
-  const [rawFeedback, setRawFeedback] = useState<string | null>(null);
-  const [parsed, setParsed] = useState<AIItem[] | null>(null);
+  const [results, setResults] = useState<AIResult[] | null>(null);
+  const [overallSummary, setOverallSummary] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canEvaluate = answers.length === questions.length && answers.every(a => a.trim().length > 0);
+  const canEvaluate =
+    answers.length === questions.length && answers.every((a) => a.trim().length > 0);
 
   async function getAIFeedback() {
     try {
       setLoading(true);
       setError(null);
-      setRawFeedback(null);
-      setParsed(null);
+      setResults(null);
+      setOverallSummary("");
 
       const res = await fetch("/api/evaluate", {
         method: "POST",
@@ -54,20 +40,15 @@ export default function AnswerSummary({ questions, answers, onRestart }: AnswerS
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || `Server error: ${res.status}`);
+        // If backend includes raw text for debugging, show it
+        const msg = data?.error || `Server error: ${res.status}`;
+        throw new Error(msg);
       }
 
-      const text: string = data.feedback;
-      setRawFeedback(text);
-
-      // Try to parse JSON
-      const jsonStr = extractJson(text);
-      const obj = JSON.parse(jsonStr);
-
-      // Minimal validation
-      if (!Array.isArray(obj)) throw new Error("AI response JSON was not an array.");
-
-      setParsed(obj as AIItem[]);
+      // Backend now returns clean JSON:
+      // { results: [...], overallSummary: "..." }
+      setResults(data.results);
+      setOverallSummary(data.overallSummary || "");
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong while evaluating.");
     } finally {
@@ -76,28 +57,29 @@ export default function AnswerSummary({ questions, answers, onRestart }: AnswerS
   }
 
   const averageScore = useMemo(() => {
-    if (!parsed || parsed.length === 0) return null;
-    const total = parsed.reduce((sum, item) => sum + (item.evaluation?.score ?? 0), 0);
-    return Math.round((total / parsed.length) * 10) / 10;
-  }, [parsed]);
+    if (!results || results.length === 0) return null;
+    const total = results.reduce((sum, r) => sum + (typeof r.score === "number" ? r.score : 0), 0);
+    return Math.round((total / results.length) * 10) / 10;
+  }, [results]);
 
   return (
     <div className="border rounded-xl p-6 max-w-2xl shadow-sm space-y-4">
-      <h2 className="text-2xl font-bold">Interview Summary</h2>
+      <h2 className="text-2xl font-bold text-gray-900">Interview Summary</h2>
 
-      {/* Always show what user answered */}
+      {/* Always show user answers */}
       <div className="space-y-4">
         {questions.map((q, i) => (
           <div key={i} className="border-b pb-4">
-            <p className="font-semibold">Q{i + 1}: {q}</p>
-            <p className="text-gray-800 mt-1">
+            <p className="font-semibold text-gray-900">Q{i + 1}: {q}</p>
+            <p className="text-gray-900 mt-1">
               <span className="font-medium">Your answer:</span> {answers[i]}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 pt-2">
+      {/* Action */}
+      <div className="flex flex-col gap-2 pt-2">
         <button
           onClick={getAIFeedback}
           disabled={loading || !canEvaluate}
@@ -107,21 +89,19 @@ export default function AnswerSummary({ questions, answers, onRestart }: AnswerS
         </button>
 
         {!canEvaluate && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-700">
             Add an answer for every question before requesting AI feedback.
           </p>
         )}
 
-        {error && (
-          <p className="text-red-600">{error}</p>
-        )}
+        {error && <p className="text-red-600">{error}</p>}
       </div>
 
-      {/* Pretty AI rendering */}
-      {parsed && (
+      {/* AI Evaluation */}
+      {results && (
         <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">AI Evaluation</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-semibold text-gray-900">AI Evaluation</h3>
             {averageScore !== null && (
               <span className="text-sm bg-gray-100 text-gray-900 px-3 py-1 rounded-full">
                 Avg Score: {averageScore}/10
@@ -129,34 +109,31 @@ export default function AnswerSummary({ questions, answers, onRestart }: AnswerS
             )}
           </div>
 
-          {parsed.map((item, idx) => (
+          {overallSummary && (
+            <div className="rounded-xl border bg-gray-50 p-4 text-gray-900">
+              <p className="font-semibold mb-1">Overall Summary</p>
+              <p>{overallSummary}</p>
+            </div>
+          )}
+
+          {results.map((r, idx) => (
             <div key={idx} className="rounded-xl border p-4 space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-semibold">Question {idx + 1}</p>
+                <p className="font-semibold text-gray-900">Question {idx + 1}</p>
                 <span className="text-sm bg-green-100 text-green-900 px-3 py-1 rounded-full">
-                  Score: {item.evaluation?.score ?? "?"}/10
+                  Score: {r.score}/10
                 </span>
               </div>
 
-              <p className="text-gray-800">
-                <span className="font-medium">Strength:</span> {item.evaluation?.strength}
+              <p className="text-gray-900">
+                <span className="font-medium">Strength:</span> {r.strength}
               </p>
 
-              <p className="text-gray-800">
-                <span className="font-medium">Improve:</span> {item.evaluation?.improvement}
+              <p className="text-gray-900">
+                <span className="font-medium">Improve:</span> {r.improvement}
               </p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* If parsing failed but raw exists, show raw */}
-      {rawFeedback && !parsed && (
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">AI Feedback (raw)</h3>
-          <pre className="bg-gray-100 text-gray-900 p-4 rounded-lg whitespace-pre-wrap text-sm">
-            {rawFeedback}
-          </pre>
         </div>
       )}
 
